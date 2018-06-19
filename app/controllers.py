@@ -5,12 +5,19 @@ from werkzeug.security import check_password_hash
 from flask import jsonify
 import datetime
 import jwt
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+from werkzeug.security import generate_password_hash, check_password_hash
+
+s = URLSafeTimedSerializer(app.config["SECRET_KEY"])
+mail = Mail(app)
 
 
 def create_new_user(data):
     print(data["username"])
-    role = Role.query.filter_by(id=data["role_id"]).first()
-    user = User(username=data["username"], email=data["email"], role=role)
+    role = Role.query.filter_by(id=1).first()
+    hashed_password = generate_password_hash(data["password"], method="sha256")
+    user = User(username=data["username"], email=data["email"], password=hashed_password, role=role)
     db.session.add(user)
     db.session.commit()
 
@@ -54,6 +61,7 @@ def edit_post(id, data):
 def get_post(id):
     return Post.query.filter_by(id=id).first()
 
+
 def delete_post(id):
     post = Post.query.filter_by(id=id).first()
     db.session.delete(post)
@@ -66,5 +74,41 @@ def login(data):
     if (check_password_hash(user.password, data["password"])):
         data = {"id": user.id,
                 "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=280)}
-        token = jwt.encode(data, app.config["SECRET_KEY"], "HS256").decode("utf-8")
-        return jsonify({"token": token}) 
+        token = jwt.encode(
+            data, app.config["SECRET_KEY"], "HS256").decode("utf-8")
+        return jsonify({"token": token})
+
+
+def send_link_to_email(data):
+    token = s.dumps(data["email"], salt="check_email")
+    link = "http://localhost:8080/#/reset_password/" + token
+
+    msg = Message("Link to reset password", sender="grzesupel@gmail.com",
+                  recipients=["grzesieks@sparkbit.pl"])
+    msg.body = link
+    mail.send(msg)
+
+
+def check_email_to_reset_password(token):
+    new_token = None
+    try:
+        email = s.loads(token["token"], salt="check_email", max_age=120)
+        new_token = s.dumps(email, salt="reset_password")
+        return jsonify({"new_token": new_token})
+    except SignatureExpired:
+        return jsonify({"message": "Token is expired!"})
+
+
+def reset_password(data):
+    try:
+        email = s.loads(data["new_token"], salt="reset_password", max_age=120)
+        print("email: ", email)
+        user = User.query.filter_by(email=email).first()
+        print("user.password: ", user.password)
+        hashed_password = generate_password_hash(data["password"], method="sha256")
+        user.password = hashed_password
+        db.session.add(user)
+        db.session.commit()
+        print("user: ", user)
+    except SignatureExpired:
+        return jsonify({"message": "Token is expired!"})

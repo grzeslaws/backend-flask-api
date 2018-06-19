@@ -10,4 +10,5 @@ app.config.from_pyfile("config.cfg")
 api = Api(app)
 db = SQLAlchemy(app)
 
+
 from app.endpoints import post, user

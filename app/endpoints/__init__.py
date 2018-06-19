@@ -1,5 +1,5 @@
 import jwt
-from flask import request
+from flask import request, url_for, jsonify
 from flask_restplus import Resource
 from functools import wraps
 from app import api, app
@@ -8,6 +8,7 @@ from app.parsers import pagination_parser
 from ..endpoints.post import init_post
 from ..endpoints.user import init_user
 from ..endpoints.login import init_login
+from ..endpoints.reset_password import reset_password
 
 
 def token_required(f):
@@ -35,4 +36,5 @@ def token_required(f):
 
 init_post(api, pagination_parser, Resource, request, token_required)
 init_user(api, pagination_parser, Resource, request, token_required)
+reset_password(api, Resource)
 init_login(api, Resource)
