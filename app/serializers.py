@@ -49,6 +49,11 @@ login_model = api.model("login_model", {
     "password": fields.String(required=True)
 })
 
-reset_password_model = api.model("reset_password_model", {
+send_email_model = api.model("reset_password_model", {
     "email": fields.String(required=True)
+})
+
+reset_password_model = api.model("reset_password_model", {
+    "password": fields.String(required=True),
+    "token": fields.String(required=True)
 })
